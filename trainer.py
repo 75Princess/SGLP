@@ -73,7 +73,7 @@ class Self_Supervised_Trainer(BaseTrainer):
         self.gap = nn.AdaptiveAvgPool1d(1)
 
     def train_epoch(self, epoch_num=None):
-        self.model.copy_weight()
+        # self.model.copy_weight()
         self.model = self.model.train()
         epoch_loss = 0  # total loss of epoch
         total_samples = 0  # total samples in epoch
@@ -85,7 +85,11 @@ class Self_Supervised_Trainer(BaseTrainer):
 
             # align_loss = self.mse(rep_mask, rep_mask_prediction).sum(dim=-1).sum().div(rep_mask.size(0))
             # align_loss = F.smooth_l1_loss(rep_mask, rep_mask_prediction)
-            align_loss = F.mse_loss(rep_mask, rep_mask_prediction)
+            
+            # 停用MSELoss 
+            # align_loss = F.mse_loss(rep_mask, rep_mask_prediction)
+            # 采用极其稳定的方向对齐损失 (Cosine Similarity)：
+            align_loss = 1.0 - F.cosine_similarity(rep_mask_prediction, rep_mask, dim=-1).mean()
             # entropy_values_contex = batch_entropy(rep_contex)
             # entropy_values_target = batch_entropy(rep_target)
             # entropy_values_target = torch.std(rep_target[:, :, 5], dim=1).sum()

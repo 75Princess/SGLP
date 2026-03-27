@@ -37,39 +37,53 @@ def Rep_Learning(config, Data):
     logger.info("Model:\n{}".format(Encoder))
     logger.info("Total number of parameters: {}".format(count_parameters(Encoder)))
     # ---------------------------------------------- Model Initialization ----------------------------------------------
-    # 1. 明确我们需要优化的网络模块 (剔除了原版的 InputEmbedding，只保留 Transformer 基础模块)
-    networks_to_optimize = [Encoder.contex_encoder, Encoder.Predictor]
-    
-    # 2. Convert parameters to tensors (提取基础模块的参数)
-    params_to_optimize = [p for net in networks_to_optimize for p in net.parameters()]
-    
-    # 3. 提取 Teacher 端的参数，并保持 lr=0.0 (绝对不能丢，这是冻结 Teacher 防止破坏 EMA 的关键！)
-    params_not_to_optimize = [p for p in Encoder.target_encoder.parameters()]
-    
-    # 4. 【新增】单独提取 Shapelet 前端参数
-    frontend_params = list(Encoder.student_frontend.parameters())
+    logger.info("Initializing Dual-Track Optimizer & EMA Parameter Groups...")
 
+    # 1. Shapelet Frontend 参数 (学生端，需要开 10 倍学习率小灶)
+    frontend_params = list(Encoder.student_frontend.parameters())
+    frontend_param_ids = set(id(p) for p in frontend_params)
+
+    # 2. 冻结参数 (老师端，lr=0 且绝不更新，保护 EMA)
+    params_not_to_optimize = list(Encoder.target_encoder.parameters())
+    if not Encoder.share_frontend:
+        # 非共享模式下，老师的 frontend 也要加入冻结名单
+        params_not_to_optimize += list(Encoder.teacher_frontend.parameters())
+    frozen_param_ids = set(id(p) for p in params_not_to_optimize)
+
+    # 3. 基础可训练参数 (动态捕获：过滤掉前端和冻结参数后，剩下所有需要梯度的参数)
+    # 这不仅包含了 Transformer、Predictor，还完美修复了原作者漏掉的 Norm 层和 mask_token！
+    base_params = [
+        p for p in Encoder.parameters() 
+        if id(p) not in frontend_param_ids 
+        and id(p) not in frozen_param_ids 
+        and p.requires_grad
+    ]
+    base_param_ids = set(id(p) for p in base_params)
+
+    # 4. 安全性检查 
+    assert len(frontend_param_ids & frozen_param_ids) == 0, "致命错误：学生前端和老师冻结参数有重叠！"
+    assert len(base_param_ids & frontend_param_ids) == 0, "致命错误：基础参数和前端参数有重叠！"
+
+    # 5. 双轨学习率配置
     optim_class = get_optimizer("RAdam")
-    
-    # 5. 计算双轨学习率
     base_lr = config['lr']
     frontend_lr = base_lr * config.get('frontend_lr_multiplier', 10.0)
 
-    # 6. 构建优化器 (保留原有逻辑，仅插入 frontend_params 组)
+    # 6. 构建优化器
     config['optimizer'] = optim_class([
-        {'params': params_to_optimize, 'lr': base_lr},
+        {'params': base_params, 'lr': base_lr},
         {'params': frontend_params, 'lr': frontend_lr},
         {'params': params_not_to_optimize, 'lr': 0.0}
     ])
-    
-    logger.info(f"[*] Base LR: {base_lr} | Frontend LR (Shapelet): {frontend_lr}")
+
+    logger.info(f"[*] Base LR: {base_lr} | Frontend LR (Shapelet): {frontend_lr} | Share Frontend: {Encoder.share_frontend}")
     
     config['problem_type'] = 'Self-Supervised'
     config['loss_module'] = get_loss_module()
 
-    save_path = os.path.join(config['save_dir'], config['problem'] +'model_{}.pth'.format('last'))
-    
+    save_path = os.path.join(config['save_dir'], config['problem'] + 'model_{}.pth'.format('last'))
     Encoder.to(config['device'])
+    # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------- Training The Model ---------------------------------------------
     logger.info('Self-Supervised training...')
     SS_trainer = Self_Supervised_Trainer(Encoder, pre_train_loader, train_loader, test_loader, config, l2_reg=0, print_conf_mat=False)
