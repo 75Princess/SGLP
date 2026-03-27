@@ -37,20 +37,38 @@ def Rep_Learning(config, Data):
     logger.info("Model:\n{}".format(Encoder))
     logger.info("Total number of parameters: {}".format(count_parameters(Encoder)))
     # ---------------------------------------------- Model Initialization ----------------------------------------------
-    # Specify which networks you want to optimize
-    networks_to_optimize = [Encoder.contex_encoder, Encoder.InputEmbedding, Encoder.Predictor]
-    # Convert parameters to tensors
+    # 1. 明确我们需要优化的网络模块 (剔除了原版的 InputEmbedding，只保留 Transformer 基础模块)
+    networks_to_optimize = [Encoder.contex_encoder, Encoder.Predictor]
+    
+    # 2. Convert parameters to tensors (提取基础模块的参数)
     params_to_optimize = [p for net in networks_to_optimize for p in net.parameters()]
+    
+    # 3. 提取 Teacher 端的参数，并保持 lr=0.0 (绝对不能丢，这是冻结 Teacher 防止破坏 EMA 的关键！)
     params_not_to_optimize = [p for p in Encoder.target_encoder.parameters()]
+    
+    # 4. 【新增】单独提取 Shapelet 前端参数
+    frontend_params = list(Encoder.student_frontend.parameters())
 
     optim_class = get_optimizer("RAdam")
-    config['optimizer'] = optim_class([{'params': params_to_optimize, 'lr': config['lr']},
-                                       {'params': params_not_to_optimize, 'lr': 0.0}])
+    
+    # 5. 计算双轨学习率
+    base_lr = config['lr']
+    frontend_lr = base_lr * config.get('frontend_lr_multiplier', 10.0)
 
+    # 6. 构建优化器 (保留原有逻辑，仅插入 frontend_params 组)
+    config['optimizer'] = optim_class([
+        {'params': params_to_optimize, 'lr': base_lr},
+        {'params': frontend_params, 'lr': frontend_lr},
+        {'params': params_not_to_optimize, 'lr': 0.0}
+    ])
+    
+    logger.info(f"[*] Base LR: {base_lr} | Frontend LR (Shapelet): {frontend_lr}")
+    
     config['problem_type'] = 'Self-Supervised'
     config['loss_module'] = get_loss_module()
 
     save_path = os.path.join(config['save_dir'], config['problem'] +'model_{}.pth'.format('last'))
+    
     Encoder.to(config['device'])
     # ------------------------------------------------- Training The Model ---------------------------------------------
     logger.info('Self-Supervised training...')

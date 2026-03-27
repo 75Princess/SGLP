@@ -43,7 +43,7 @@ parser.add_argument('--layers', type=int, default=4, help="Number of layers for 
 parser.add_argument('--pre_layers', type=int, default=2, help="Number of layers for the Predictor")
 parser.add_argument('--mask_ratio', type=float, default=0.5, help=" masking ratio")
 parser.add_argument('--momentum', type=float, default=0.99, help="Beta coefficient for EMA update")
-parser.add_argument('--share_frontend', type=bool, default=True, help="Share Shapelet frontend between context and target")
+parser.add_argument('--share_frontend', type=lambda x: (str(x).lower() == 'true'), default=True, help="Share Shapelet frontend between context and target")
 parser.add_argument('--frontend_lr_multiplier', type=float, default=10.0, help='Shapelet 学习率放大倍数 (解决冷启动)')
 
 parser.add_argument('--patch_size', type=int, default=8, help='size')
