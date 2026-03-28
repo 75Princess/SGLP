@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-03-28_10-22",
+  "datasets": {
+    "FingerMovements": {
+      "success": true,
+      "final_acc": 0.49,
+      "result_file": "Results/Rep-Learning/FingerMovements\\2026-03-28_10-22\\linear_result.txt"
+    },
+    "HandMovementDirection": {
+      "success": false,
+      "final_acc": null,
+      "result_file": null
+    },
+    "Handwriting": {
+      "success": false,
+      "final_acc": null,
+      "result_file": null
+    },
+    "Heartbeat": {
+      "success": true,
+      "final_acc": 0.7024390243902439,
+      "result_file": "Results/Rep-Learning/Heartbeat\\2026-03-28_10-28\\linear_result.txt"
+    }
+  }
+}
