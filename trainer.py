@@ -248,6 +248,7 @@ def SS_train_runner(config, model, trainer, path):
     save_best_model = utils.SaveBestModel()
 
     Total_loss = []
+    model.copy_weight()
     for epoch in tqdm(range(start_epoch + 1, epochs + 1), desc='Training Epoch', leave=False):
 
         aggr_metrics_train, model = trainer.train_epoch(epoch)  # dictionary of aggregate epoch metrics

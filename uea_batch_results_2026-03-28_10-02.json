@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-03-28_10-02",
+  "datasets": {
+    "ArticularyWordRecognition": {
+      "success": false,
+      "final_acc": null,
+      "result_file": null
+    },
+    "BasicMotions": {
+      "success": true,
+      "final_acc": 0.975,
+      "result_file": "Results/Rep-Learning/BasicMotions\\2026-03-28_10-03\\linear_result.txt"
+    },
+    "CharacterTrajectories": {
+      "success": false,
+      "final_acc": null,
+      "result_file": null
+    },
+    "Cricket": {
+      "success": false,
+      "final_acc": null,
+      "result_file": null
+    }
+  }
+}

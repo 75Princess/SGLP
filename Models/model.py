@@ -23,7 +23,7 @@ class EEG2Rep(nn.Module):
         channel_size, seq_len = config['Data_shape'][1], config['Data_shape'][2]
         emb_size = config['emb_size']  # d_x default=16
         # Shapelet Embedding Layer -----------------------------------------------------------
-        config['pooling_size'] = 10  # Shapelet 降采样步长 (原版是2，这里稍微调大配合滑动窗口)
+        config['pooling_size'] = config['patch_size']  # Shapelet 降采样步长 (原版是2，这里稍微调大配合滑动窗口)
         self.seq_len = int(seq_len / config['pooling_size'])  # Number of patches (l')
         # 定义 Shapelet 字典，确保总数相加等于 emb_size default=16
         L_raw = config['Data_shape'][2]

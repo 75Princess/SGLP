@@ -39,14 +39,14 @@ def Rep_Learning(config, Data):
     # ---------------------------------------------- Model Initialization ----------------------------------------------
     logger.info("Initializing Dual-Track Optimizer & EMA Parameter Groups...")
 
-    # 1. Shapelet Frontend 参数 (学生端，需要开 10 倍学习率小灶)
+    # 1. Shapelet Frontend 参数 (学生端，开 10 倍学习率)
     frontend_params = list(Encoder.student_frontend.parameters())
     frontend_param_ids = set(id(p) for p in frontend_params)
 
     # 2. 冻结参数 (老师端，lr=0 且绝不更新，保护 EMA)
     params_not_to_optimize = list(Encoder.target_encoder.parameters())
     if not Encoder.share_frontend:
-        # 非共享模式下，老师的 frontend 也要加入冻结名单
+        # 非共享模式下，老师的 frontend 加入冻结名单
         params_not_to_optimize += list(Encoder.teacher_frontend.parameters())
     frozen_param_ids = set(id(p) for p in params_not_to_optimize)
 
@@ -106,7 +106,13 @@ def Rep_Learning(config, Data):
     print(cm)
     # print("Test ROC AUC:")
     # print(roc_auc_score(y_hat, test_labels.cpu().detach().numpy()))
+    
+    # 构建返回值（Linear Probing 结果，无 Fine-tuning）
+    best_aggr_metrics_test = {'total_accuracy': acc_test, 'accuracy': acc_test}
+    all_metrics = {'total_accuracy': acc_test}
+    return best_aggr_metrics_test, all_metrics
 
+    '''  fine-tuning  暂时不用
     # --------------------------------- Load Data -------------------------------------------------------------
     train_dataset = dataset_class(Data['train_data'], Data['train_label'], config['patch_size'])
     val_dataset = dataset_class(Data['val_data'], Data['val_label'], config['patch_size'])
@@ -129,7 +135,7 @@ def Rep_Learning(config, Data):
     best_test_evaluator = SupervisedTrainer(best_Encoder, None, test_loader, None, config, print_conf_mat=True)
     best_aggr_metrics_test, all_metrics = best_test_evaluator.evaluate(keep_all=True)
     return best_aggr_metrics_test, all_metrics
-
+    '''
 
 def Supervised(config, Data):
     # -------------------------------------------- Build Model -----------------------------------------------------

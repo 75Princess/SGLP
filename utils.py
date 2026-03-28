@@ -71,11 +71,12 @@ def Initialization(config):
 
 
 def Data_Loader(config):
-    if config['problem'] =='TUEV':
+    if config['problem'] == 'TUEV':
         Data = data_loader.tuev_loader(config)
+    elif config.get('dataset_type') == 'UEA':
+        Data = data_loader.uea_loader(config)
     else:
         Data = data_loader.load(config)
-    # Data = convert_frequency(config, Data)
     return Data
 
 

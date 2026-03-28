@@ -16,15 +16,18 @@ parser.add_argument('--gpu', type=int, default='0', help='GPU index, -1 for CPU'
 parser.add_argument('--console', action='store_true', help="Optimize printout for console output; otherwise for file")
 parser.add_argument('--seed', default=1234, type=int, help='Seed used for splitting sets')
 # --------------------------------------------------- I/O --------------------------------------------------------------
-parser.add_argument('--data_dir', default='Dataset/UCIHAR', help='Data directory',
-                    choices={'Dataset/mhealth', 'Dataset/UCIHAR', 'Dataset/pamap2', 'Dataset/opportunity'})
+parser.add_argument('--data_dir', default='Heartbeat', help='DatasetName')
 parser.add_argument('--output_dir', default='Results',
                     help='Root output directory. Time-stamped directories will be created inside.')
 parser.add_argument('--print_interval', type=int, default=10, help='Print batch info every this many batches')
+parser.add_argument('--dataset_type', default='UEA', choices={'EEG', 'UEA'}, 
+                    help='Dataset type: EEG or UEA time series')
+parser.add_argument('--uea_path', default='Dataset/UEA', 
+                    help='Path to UEA multivariate time series datasets')
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------- Parameters and Hyperparameter ----------------------------------------------
-parser.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
-parser.add_argument('--batch_size', type=int, default=128, help='Training batch size')
+parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs')
+parser.add_argument('--batch_size', type=int, default=8, help='Training batch size')
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--dropout', type=float, default=0.1, help='Dropout regularization ratio')
 parser.add_argument('--Norm', type=bool, default=False, help='Data Normalization')
