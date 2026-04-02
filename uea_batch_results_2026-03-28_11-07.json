@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-03-28_11-07",
+  "datasets": {
+    "RacketSports": {
+      "success": true,
+      "final_acc": 0.6710526315789473,
+      "result_file": "Results/Rep-Learning/RacketSports\\2026-03-28_11-07\\linear_result.txt"
+    },
+    "SelfRegulationSCP1": {
+      "success": true,
+      "final_acc": 0.47440273037542663,
+      "result_file": "Results/Rep-Learning/SelfRegulationSCP1\\2026-03-28_11-10\\linear_result.txt"
+    },
+    "SelfRegulationSCP2": {
+      "success": true,
+      "final_acc": 0.4722222222222222,
+      "result_file": "Results/Rep-Learning/SelfRegulationSCP2\\2026-03-28_11-17\\linear_result.txt"
+    }
+  }
+}

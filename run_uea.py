@@ -6,34 +6,35 @@ from datetime import datetime
 
 # UEA 数据集列表
 UEA_DATASETS = [
-    #'ArticularyWordRecognition',
-    #'BasicMotions',
-    #'CharacterTrajectories',
-    #'Cricket',
+    #'ArticularyWordRecognition',# 1 0.85
+    #'AtrialFibrillation',# 1 0.4
+    #'BasicMotions',# 1
+    #'CharacterTrajectories',# 1 慢
+    #'Cricket',# 1 0.75
     #'DuckDuckGeese',# 慢
-    #'ERing',
-    #'EigenWorms',
-    #'Epilepsy',
-    #'EthanolConcentration',
+    #'ERing',# 1
+    #'EigenWorms',#  0 OOM
+    #'Epilepsy',# 1 0.76
+    #'EthanolConcentration',# 1
     #'FaceDetection',# 慢
-    'FingerMovements',
-    'HandMovementDirection',
-    'Handwriting',
-    'Heartbeat',
-    'JapaneseVowels',
-    'LSST',
-    'Libras',
-    'MotorImagery',
-    'NATOPS',
-    'PEMS-SF',
-    'PenDigits',
-    'PhonemeSpectra',
-    'RacketSports',
-    'SelfRegulationSCP1',
-    'SelfRegulationSCP2',
-    'SpokenArabicDigits',
-    'StandWalkJump',
-    'UWaveGestureLibrary',
+    #'FingerMovements',# 1
+    #'HandMovementDirection',# 1 0.31
+    #'Handwriting',# 1 0.13
+    #'Heartbeat',# 1
+    #'JapaneseVowels',# 1
+    #'LSST',# 1 慢
+    #'Libras',# 1
+    #'MotorImagery',# 0 OOM
+    #'NATOPS',# 1
+    #'PEMS-SF',# 1
+    #'PenDigits',# 1 慢
+    #'PhonemeSpectra',# 1 慢
+    #'RacketSports',# 1
+    #'SelfRegulationSCP1',# 1 0.73
+    #'SelfRegulationSCP2',# 1
+    #'SpokenArabicDigits',# 1
+    #'StandWalkJump',# 1 0.26
+    #'UWaveGestureLibrary',# 1
 ]
 
 def find_latest_result(dataset_name):

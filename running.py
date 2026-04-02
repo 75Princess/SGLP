@@ -6,7 +6,7 @@ from Models.loss import get_loss_module
 from Models.utils import load_model
 from trainer import *
 # --------- For Logistic Regression--------------------------------------------------
-from eval import fit_lr,  make_representation
+from eval import fit_lr, fit_svm, make_representation
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
@@ -96,7 +96,9 @@ def Rep_Learning(config, Data):
     train_repr, train_labels = make_representation(SS_Encoder, train_loader)
     test_repr, test_labels = make_representation(SS_Encoder, test_loader)
 
-    clf = fit_lr(train_repr.cpu().detach().numpy(), train_labels.cpu().detach().numpy())
+    # TS2Vec 协议: 使用 SVM + GridSearch 进行最终评估
+    print("Training SVM with Grid Search (Aligned with TS2Vec)...")
+    clf = fit_svm(train_repr.cpu().detach().numpy(), train_labels.cpu().detach().numpy())
     y_hat = clf.predict(test_repr.cpu().detach().numpy())
     # plot_tSNE(test_repr.cpu().detach().numpy(), test_labels.cpu().detach().numpy())
     acc_test = accuracy_score(test_labels.cpu().detach().numpy(), y_hat)

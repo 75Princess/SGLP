@@ -11,12 +11,13 @@ from utils import Setup, Initialization, Data_Loader, print_title
 logger = logging.getLogger('__main__')
 parser = argparse.ArgumentParser()
 # ----------------------------------------------------------------------------------------------------------------------
-# ------------------------------------------------------ System --------------------------------------------------------
+# ------------------------------------------------------ System -------
+# -------------------------------------------------
 parser.add_argument('--gpu', type=int, default='0', help='GPU index, -1 for CPU')
 parser.add_argument('--console', action='store_true', help="Optimize printout for console output; otherwise for file")
 parser.add_argument('--seed', default=1234, type=int, help='Seed used for splitting sets')
 # --------------------------------------------------- I/O --------------------------------------------------------------
-parser.add_argument('--data_dir', default='Heartbeat', help='DatasetName')
+parser.add_argument('--data_dir', default='ERing', help='DatasetName')
 parser.add_argument('--output_dir', default='Results',
                     help='Root output directory. Time-stamped directories will be created inside.')
 parser.add_argument('--print_interval', type=int, default=10, help='Print batch info every this many batches')
@@ -50,9 +51,9 @@ parser.add_argument('--share_frontend', type=lambda x: (str(x).lower() == 'true'
 parser.add_argument('--frontend_lr_multiplier', type=float, default=10.0, help='Shapelet 学习率放大倍数 (解决冷启动)')
 
 parser.add_argument('--patch_size', type=int, default=8, help='size')
-parser.add_argument('--emb_size', type=int, default=16, help='Internal dimension of transformer embeddings')
-parser.add_argument('--dim_ff', type=int, default=256, help='Dimension of feedforward network of transformer layer')
-parser.add_argument('--num_heads', type=int, default=8, help='Number of multi-headed attention heads')
+parser.add_argument('--emb_size', type=int, default=64, help='Internal dimension of transformer embeddings')
+parser.add_argument('--dim_ff', type=int, default=None, help='Dimension of feedforward network (default: 4*emb_size)')
+parser.add_argument('--num_heads', type=int, default=4, help='Number of multi-headed attention heads')
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 args = parser.parse_args()

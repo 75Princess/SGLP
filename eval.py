@@ -11,18 +11,22 @@ from sklearn.model_selection import GridSearchCV, train_test_split
 
 
 def fit_svm(features, y, MAX_SAMPLES=10000):
+    """
+    TS2Vec 协议: 带有 RBF 核的 SVM + Grid Search 交叉验证
+    """
     nb_classes = np.unique(y, return_counts=True)[1].shape[0]
     train_size = features.shape[0]
 
-    svm = SVC(C=np.inf, gamma='scale')
+    svm = SVC(C=1e10, gamma='scale')  # 使用极大值代替 inf
     if train_size // nb_classes < 5 or train_size < 50:
+        print(f"[SVM] Small dataset (n={train_size}), skipping GridSearch")
         return svm.fit(features, y)
     else:
         grid_search = GridSearchCV(
             svm, {
                 'C': [
                     0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000,
-                    np.inf
+                    1e10  # 极大值代替 inf
                 ],
                 'kernel': ['rbf'],
                 'degree': [3],
@@ -38,7 +42,7 @@ def fit_svm(features, y, MAX_SAMPLES=10000):
                 'decision_function_shape': ['ovr'],
                 'random_state': [None]
             },
-            cv=5, n_jobs=5
+            cv=5, n_jobs=1, scoring='accuracy'  # Windows 兼容: n_jobs=1
         )
         # If the training set is too large, subsample MAX_SAMPLES examples
         if train_size > MAX_SAMPLES:
@@ -50,6 +54,8 @@ def fit_svm(features, y, MAX_SAMPLES=10000):
             y = split[2]
 
         grid_search.fit(features, y)
+        print(f"[SVM] GridSearch Best C: {grid_search.best_params_['C']}")
+        print(f"[SVM] GridSearch Best CV Score: {grid_search.best_score_:.4f}")
         return grid_search.best_estimator_
 
 

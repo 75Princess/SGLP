@@ -86,10 +86,7 @@ class Self_Supervised_Trainer(BaseTrainer):
             # align_loss = self.mse(rep_mask, rep_mask_prediction).sum(dim=-1).sum().div(rep_mask.size(0))
             # align_loss = F.smooth_l1_loss(rep_mask, rep_mask_prediction)
             
-            # 停用MSELoss 
-            # align_loss = F.mse_loss(rep_mask, rep_mask_prediction)
-            # 采用极其稳定的方向对齐损失 (Cosine Similarity)：
-            align_loss = 1.0 - F.cosine_similarity(rep_mask_prediction, rep_mask, dim=-1).mean()
+            
             # entropy_values_contex = batch_entropy(rep_contex)
             # entropy_values_target = batch_entropy(rep_target)
             # entropy_values_target = torch.std(rep_target[:, :, 5], dim=1).sum()
@@ -124,6 +121,10 @@ class Self_Supervised_Trainer(BaseTrainer):
                         + off_diagonal(cov_y).pow_(2).sum().div(x.shape[-1]))
             
             '''
+            # 停用MSELoss 
+            # align_loss = F.mse_loss(rep_mask, rep_mask_prediction)
+            # 采用极其稳定的方向对齐损失 (Cosine Similarity)：
+            align_loss = 1.0 - F.cosine_similarity(rep_mask_prediction, rep_mask, dim=-1).mean()
             y = self.gap(rep_mask_prediction.transpose(2, 1)).squeeze()
             y = y - y.mean(dim=0)
 
@@ -171,7 +172,9 @@ class Self_Supervised_Trainer(BaseTrainer):
 
 def plot_tSNE(data, labels):
     # Create a TSNE instance with 2 components (dimensions)
-    tsne = TSNE(n_components=2, random_state=42)
+    # 动态调整 perplexity，确保小于样本数
+    perplexity = min(30, data.shape[0] - 1) if data.shape[0] > 1 else 1
+    tsne = TSNE(n_components=2, random_state=42, perplexity=perplexity)
     # Fit and transform the data using t-SNE
     embedded_data = tsne.fit_transform(data)
 
@@ -191,8 +194,14 @@ def plot_tSNE(data, labels):
 
 
 def off_diagonal(x):
+    # 处理边界情况：如果 x 不是 2D，返回 0
+    if x.dim() < 2:
+        return torch.tensor(0.0, device=x.device)
     n, m = x.shape
     assert n == m
+    # 如果 n=1，没有非对角线元素，返回 0
+    if n <= 1:
+        return torch.tensor(0.0, device=x.device)
     return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
 
 

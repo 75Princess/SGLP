@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-03-28_11-27",
+  "datasets": {
+    "StandWalkJump": {
+      "success": false,
+      "final_acc": null,
+      "result_file": null
+    },
+    "UWaveGestureLibrary": {
+      "success": true,
+      "final_acc": 0.778125,
+      "result_file": "Results/Rep-Learning/UWaveGestureLibrary\\2026-03-28_11-27\\linear_result.txt"
+    }
+  }
+}

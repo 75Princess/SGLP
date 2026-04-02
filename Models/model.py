@@ -21,17 +21,38 @@ class EEG2Rep(nn.Module):
         """
         # Parameters Initialization -----------------------------------------------
         channel_size, seq_len = config['Data_shape'][1], config['Data_shape'][2]
-        emb_size = config['emb_size']  # d_x default=16
+        self.emb_size = config['emb_size']  # d_x default=64
+        
+        # Transformer 参数自适应
+        self.num_heads = config.get('num_heads') or 4  # 默认4，确保 emb_size % num_heads == 0
+        self.dim_ff = config.get('dim_ff') or (4 * self.emb_size)  # 默认 4*emb_size
+        
+        # 安全性检查：emb_size 必须能被 num_heads 整除
+        assert self.emb_size % self.num_heads == 0, f"emb_size ({self.emb_size}) 必须能被 num_heads ({self.num_heads}) 整除！"
+        
+        # 更新 config，让 Encoder 也能使用自适应参数
+        config['num_heads'] = self.num_heads
+        config['dim_ff'] = self.dim_ff
+        
         # Shapelet Embedding Layer -----------------------------------------------------------
         config['pooling_size'] = config['patch_size']  # Shapelet 降采样步长 (原版是2，这里稍微调大配合滑动窗口)
         self.seq_len = int(seq_len / config['pooling_size'])  # Number of patches (l')
-        # 定义 Shapelet 字典，确保总数相加等于 emb_size default=16
+        
+        # ============ 动态分配 Shapelet 探针数量 ============
         L_raw = config['Data_shape'][2]
+        total_emb_size = self.emb_size
+        
+        # 将总维度尽量均分为 3 份给短、中、长探针
+        num_short = total_emb_size // 3
+        num_mid = total_emb_size // 3
+        num_long = total_emb_size - num_short - num_mid  # 吸收余数
+        
         shapelet_fractions = {
-            0.1: 5,
-            0.4: 5,
-            0.7: 6
+            0.1: num_short,  # 短尺度
+            0.4: num_mid,    # 中尺度
+            0.7: num_long    # 长尺度
         }
+        
         # 动态计算 Shapelet 长度并构建字典
         shapelet_dict = {}
         for frac, num in shapelet_fractions.items():
@@ -59,22 +80,23 @@ class EEG2Rep(nn.Module):
             self.teacher_frontend = self.student_frontend
             
 
-        self.PositionalEncoding = PositionalEmbedding(self.seq_len, emb_size)
+        self.PositionalEncoding = PositionalEmbedding(self.seq_len, self.emb_size)
         # -------------------------------------------------------------------------
         self.momentum = config['momentum']
         self.device = config['device']
         self.mask_ratio = config['mask_ratio']
         self.mask_len = int(config['mask_ratio'] * self.seq_len)
-        self.mask_token = nn.Parameter(torch.randn(emb_size, ))
+        self.mask_token = nn.Parameter(torch.randn(self.emb_size, ))
 
-        # Transformer Encoder
+        # Transformer Encoder (使用自适应参数)
         self.contex_encoder = Encoder(config)
         self.target_encoder = copy.deepcopy(self.contex_encoder)
-        self.Predictor = Predictor(emb_size, config['num_heads'], config['dim_ff'], 1, config['pre_layers'])
-        self.predict_head = nn.Linear(emb_size, config['num_labels'])
-        self.Norm = nn.LayerNorm(emb_size)
-        self.Norm2 = nn.LayerNorm(emb_size)
+        self.Predictor = Predictor(self.emb_size, self.num_heads, self.dim_ff, 1, config['pre_layers'])
+        self.predict_head = nn.Linear(self.emb_size, config['num_labels'])
+        self.Norm = nn.LayerNorm(self.emb_size)
+        self.Norm2 = nn.LayerNorm(self.emb_size)
         self.gap = nn.AdaptiveAvgPool1d(1)
+        self.gmp = nn.AdaptiveMaxPool1d(1)  # TS2Vec 协议: Max Pooling 提取最强响应
 
     def copy_weight(self):
         with torch.no_grad():
@@ -101,8 +123,14 @@ class EEG2Rep(nn.Module):
             patches = self.Norm2(patches)
             out = self.contex_encoder(patches)
             out = out.transpose(2, 1)
-            out = self.gap(out)
-            return out.squeeze()
+            # TS2Vec 协议: 使用 Max Pooling 提取最强响应
+            out = self.gmp(out)
+            # 确保返回 2D 张量: (B, D)
+            if out.dim() == 3:
+                out = out.squeeze(-1)
+            if out.dim() == 1:
+                out = out.unsqueeze(0)
+            return out
 
     def pretrain_forward(self, x):
         B, C, L_raw = x.shape
@@ -238,15 +266,28 @@ class LocalEuclideanBlock(nn.Module):
         # 1. 右侧补零，确保 unfold 后序列长度与原序列 L_raw 一致
         x_pad = F.pad(x, (0, self.size - 1))
         # 2. 滑动窗口扫描
-        x_unfold = x_pad.unfold(2, self.size, 1).contiguous()
+        x_unfold = x_pad.unfold(2, self.size, 1).contiguous()  # (B, C, L_raw, shapelet_size)
         
-        # 3. 计算欧氏距离
-        dist = torch.cdist(x_unfold, self.shapelets, p=2)
-        dist = torch.sum(dist, dim=1, keepdim=True).transpose(2, 3).squeeze(1) # shape: (B, K, L_raw)
+        # 3. 计算欧氏距离（内存优化版：逐通道计算，避免 cdist 的大内存分配）
+        # x_unfold: (B, C, L, S), shapelets: (C, K, S)
+        B, C, L, S = x_unfold.shape
+        K = self.shapelets.shape[1]
+        
+        # 逐通道计算距离，减少峰值内存
+        dist_list = []
+        for c in range(C):
+            # x_c: (B, L, S), s_c: (K, S)
+            x_c = x_unfold[:, c, :, :].contiguous()  # (B, L, S) - 确保 contiguous
+            s_c = self.shapelets[c, :, :].contiguous()  # (K, S) - 确保 contiguous
+            # 计算距离: (B, L, K)
+            dist_c = torch.cdist(x_c, s_c, p=2)  # 小规模的 cdist
+            dist_list.append(dist_c)
+        
+        # 在通道维度求和: (B, L, K) -> (B, K, L)
+        dist = torch.stack(dist_list, dim=0).sum(dim=0).transpose(1, 2)  # (B, K, L_raw)
         
         # 4. 核心魔改：高斯反转！把“距离最小”变成“得分最高”
-        # 这样就能和另外两个度量标准统一使用 MaxPool
-        activation = torch.exp(-dist) 
+        activation = torch.exp(-dist)
         
         # 5. 局部池化 (降采样生成 Patch)
         out = F.max_pool1d(activation, kernel_size=self.pool_size, stride=self.pool_size)
